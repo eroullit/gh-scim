@@ -20,7 +20,12 @@ import (
 	"github.com/eroullit/gh-scim/internal/scim"
 )
 
-const commandTimeout = 90 * time.Second
+const (
+	commandTimeout  = 90 * time.Second
+	ownershipPrefix = "gh-scim-e2e-"
+	userExternalID  = ownershipPrefix + "user"
+	groupExternalID = ownershipPrefix + "group"
+)
 
 var safeName = regexp.MustCompile(`[^a-z0-9-]+`)
 
@@ -48,19 +53,46 @@ func TestCompactUserName(t *testing.T) {
 	}
 }
 
+func TestOwnershipChecks(t *testing.T) {
+	ownedGroup := scim.Group{
+		ID:          "group-id",
+		ExternalID:  groupExternalID,
+		DisplayName: ownershipPrefix + "123-group",
+	}
+	if !isOwnedGroup(ownedGroup) {
+		t.Fatal("expected group with stable external ID and ownership prefix to be owned")
+	}
+	ownedGroup.ExternalID = "unrelated"
+	if isOwnedGroup(ownedGroup) {
+		t.Fatal("group with unrelated external ID must not be owned")
+	}
+
+	ownedUser := scim.User{
+		ID:          "user-id",
+		ExternalID:  userExternalID,
+		DisplayName: ownershipPrefix + "123-user",
+	}
+	if !isOwnedUser(ownedUser) {
+		t.Fatal("expected user with stable external ID and ownership prefix to be owned")
+	}
+	ownedUser.DisplayName = "unrelated"
+	if isOwnedUser(ownedUser) {
+		t.Fatal("user without ownership prefix must not be owned")
+	}
+}
+
 func TestProvisioningLifecycle(t *testing.T) {
 	cfg := loadLiveConfig(t)
 	cfg.binary = extensionExecutable(t)
 
-	userExternalID := cfg.prefix + "-user"
 	userName := compactUserName(cfg.prefix)
 	if len(userName) > 39 {
 		t.Fatalf("generated username is %d characters, maximum is 39", len(userName))
 	}
-	groupExternalID := cfg.prefix + "-group"
+	userDisplayName := cfg.prefix + "-user"
 	groupName := cfg.prefix + "-group"
 
-	cleanupStaleResources(t, cfg, userExternalID, userName, groupExternalID, groupName)
+	cleanupStaleResources(t, cfg)
 
 	var userID, groupID string
 	t.Cleanup(func() {
@@ -82,7 +114,7 @@ func TestProvisioningLifecycle(t *testing.T) {
 		"--username", userName,
 		"--given-name", "SCIM",
 		"--family-name", "Test",
-		"--display-name", "SCIM Test User",
+		"--display-name", userDisplayName,
 		"--email", cfg.email,
 		"--role", "user",
 	)
@@ -105,19 +137,19 @@ func TestProvisioningLifecycle(t *testing.T) {
 		"--username", userName,
 		"--given-name", "Provisioning",
 		"--family-name", "Test",
-		"--display-name", "SCIM Replaced User",
+		"--display-name", userDisplayName+"-replaced",
 		"--email", cfg.email,
 		"--role", "user",
 	)
-	if replacedUser.DisplayName != "SCIM Replaced User" {
-		t.Fatalf("replace user displayName = %q, want %q", replacedUser.DisplayName, "SCIM Replaced User")
+	if replacedUser.DisplayName != userDisplayName+"-replaced" {
+		t.Fatalf("replace user displayName = %q, want %q", replacedUser.DisplayName, userDisplayName+"-replaced")
 	}
 
 	patchedUser := runJSON[scim.User](t, cfg,
-		"users", "patch", userID, "--path", "displayName", "--value", "SCIM Patched User",
+		"users", "patch", userID, "--path", "displayName", "--value", userDisplayName+"-patched",
 	)
-	if patchedUser.DisplayName != "SCIM Patched User" {
-		t.Fatalf("patch user displayName = %q, want %q", patchedUser.DisplayName, "SCIM Patched User")
+	if patchedUser.DisplayName != userDisplayName+"-patched" {
+		t.Fatalf("patch user displayName = %q, want %q", patchedUser.DisplayName, userDisplayName+"-patched")
 	}
 
 	deprovisionedUser := runJSON[scim.User](t, cfg, "users", "deprovision", userID)
@@ -204,7 +236,7 @@ func loadLiveConfig(t *testing.T) liveConfig {
 		t.Fatal("could not derive a safe test run suffix")
 	}
 
-	prefix := "gh-scim-e2e-" + suffix
+	prefix := ownershipPrefix + suffix
 	return liveConfig{
 		enterprise: enterprise,
 		hostname:   os.Getenv("SCIM_HOSTNAME"),
@@ -312,21 +344,14 @@ func runJSON[T any](t *testing.T, cfg liveConfig, args ...string) T {
 	return value
 }
 
-func cleanupStaleResources(
-	t *testing.T,
-	cfg liveConfig,
-	userExternalID string,
-	userName string,
-	groupExternalID string,
-	groupName string,
-) {
+func cleanupStaleResources(t *testing.T, cfg liveConfig) {
 	t.Helper()
 
 	groups := runJSON[scim.ListResponse[scim.Group]](
-		t, cfg, "groups", "list", "--filter", fmt.Sprintf(`displayName eq %q`, groupName),
+		t, cfg, "groups", "list", "--filter", fmt.Sprintf(`externalId eq %q`, groupExternalID),
 	)
 	for _, group := range groups.Resources {
-		if group.ExternalID != groupExternalID || group.ID == "" {
+		if !isOwnedGroup(group) {
 			continue
 		}
 		if _, err := runCommand(t, cfg, "groups", "delete", group.ID, "--confirm"); err != nil {
@@ -335,16 +360,28 @@ func cleanupStaleResources(
 	}
 
 	users := runJSON[scim.ListResponse[scim.User]](
-		t, cfg, "users", "list", "--filter", fmt.Sprintf(`userName eq %q`, userName),
+		t, cfg, "users", "list", "--filter", fmt.Sprintf(`externalId eq %q`, userExternalID),
 	)
 	for _, user := range users.Resources {
-		if user.ExternalID != userExternalID || user.ID == "" || !hasEmail(user, cfg.email) {
+		if !isOwnedUser(user) {
 			continue
 		}
 		if _, err := runCommand(t, cfg, "users", "delete", user.ID, "--confirm"); err != nil {
 			t.Fatalf("delete stale owned user %s: %v", user.ID, err)
 		}
 	}
+}
+
+func isOwnedGroup(group scim.Group) bool {
+	return group.ID != "" &&
+		group.ExternalID == groupExternalID &&
+		strings.HasPrefix(group.DisplayName, ownershipPrefix)
+}
+
+func isOwnedUser(user scim.User) bool {
+	return user.ID != "" &&
+		user.ExternalID == userExternalID &&
+		strings.HasPrefix(user.DisplayName, ownershipPrefix)
 }
 
 func requireUser(t *testing.T, user scim.User, id, externalID, email string) {

@@ -142,8 +142,16 @@ the leading `@`; each run generates a unique address under that domain. Set
 The live suite creates, updates, suspends, reactivates, and irreversibly deletes
 a user. It also creates, updates, changes membership for, and deletes a group.
 Resources use a `gh-scim-e2e-` ownership prefix, and cleanup additionally checks
-their generated external IDs and email before deleting them. Usernames use a
-compact `e2e-<hash>` form to remain safely below GitHub's 39-character limit.
+their stable test-only external IDs and prefixed display names before deleting
+them. Usernames use a compact `e2e-<hash>` form to remain safely below GitHub's
+39-character limit.
+
+Assertion failures run ordered cleanup through Go's `t.Cleanup`: the group is
+deleted before the user. If the process or runner is terminated before cleanup
+can run, the next execution performs a preflight lookup using the stable
+`gh-scim-e2e-group` and `gh-scim-e2e-user` external IDs, removes matching owned
+resources in the same order, and only then starts provisioning. Per-run
+usernames and email addresses remain unique.
 
 The `test` GitHub Actions workflow runs on every pull request and push, can be
 started manually, and runs daily at 06:00 UTC. It runs the live suite once for
