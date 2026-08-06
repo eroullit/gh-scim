@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -64,12 +65,12 @@ func TestProvisioningLifecycle(t *testing.T) {
 	var userID, groupID string
 	t.Cleanup(func() {
 		if groupID != "" {
-			if _, err := cfg.run("groups", "delete", groupID, "--confirm"); err != nil {
+			if _, err := runCommand(t, cfg, "groups", "delete", groupID, "--confirm"); err != nil {
 				t.Errorf("cleanup group %s: %v", groupID, err)
 			}
 		}
 		if userID != "" {
-			if _, err := cfg.run("users", "delete", userID, "--confirm"); err != nil {
+			if _, err := runCommand(t, cfg, "users", "delete", userID, "--confirm"); err != nil {
 				t.Errorf("cleanup user %s: %v", userID, err)
 			}
 		}
@@ -172,12 +173,12 @@ func TestProvisioningLifecycle(t *testing.T) {
 	withMember := runJSON[scim.Group](t, cfg, "groups", "get", groupID)
 	requireMember(t, withMember, userID, true)
 
-	if _, err := cfg.run("groups", "delete", groupID, "--confirm"); err != nil {
+	if _, err := runCommand(t, cfg, "groups", "delete", groupID, "--confirm"); err != nil {
 		t.Fatalf("delete group: %v", err)
 	}
 	groupID = ""
 
-	if _, err := cfg.run("users", "delete", userID, "--confirm"); err != nil {
+	if _, err := runCommand(t, cfg, "users", "delete", userID, "--confirm"); err != nil {
 		t.Fatalf("hard-delete user: %v", err)
 	}
 	userID = ""
@@ -276,18 +277,31 @@ func (cfg liveConfig) run(args ...string) ([]byte, error) {
 	})
 	output, err := cmd.CombinedOutput()
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-		return nil, fmt.Errorf("command timed out after %s: %s", commandTimeout, strings.Join(args, " "))
+		return output, fmt.Errorf("command timed out after %s: %s", commandTimeout, strings.Join(args, " "))
 	}
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w\n%s", strings.Join(args, " "), err, output)
+		return output, fmt.Errorf("%s: %w", strings.Join(args, " "), err)
 	}
 	return output, nil
+}
+
+func runCommand(t *testing.T, cfg liveConfig, args ...string) ([]byte, error) {
+	t.Helper()
+	t.Logf("gh-scim call: %s", formatCommand(args))
+
+	output, err := cfg.run(args...)
+	if len(output) > 0 {
+		t.Logf("gh-scim stdout:\n%s", strings.TrimSpace(string(output)))
+	} else {
+		t.Log("gh-scim stdout: <empty response>")
+	}
+	return output, err
 }
 
 func runJSON[T any](t *testing.T, cfg liveConfig, args ...string) T {
 	t.Helper()
 
-	output, err := cfg.run(args...)
+	output, err := runCommand(t, cfg, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -315,7 +329,7 @@ func cleanupStaleResources(
 		if group.ExternalID != groupExternalID || group.ID == "" {
 			continue
 		}
-		if _, err := cfg.run("groups", "delete", group.ID, "--confirm"); err != nil {
+		if _, err := runCommand(t, cfg, "groups", "delete", group.ID, "--confirm"); err != nil {
 			t.Fatalf("delete stale owned group %s: %v", group.ID, err)
 		}
 	}
@@ -327,7 +341,7 @@ func cleanupStaleResources(
 		if user.ExternalID != userExternalID || user.ID == "" || !hasEmail(user, cfg.email) {
 			continue
 		}
-		if _, err := cfg.run("users", "delete", user.ID, "--confirm"); err != nil {
+		if _, err := runCommand(t, cfg, "users", "delete", user.ID, "--confirm"); err != nil {
 			t.Fatalf("delete stale owned user %s: %v", user.ID, err)
 		}
 	}
@@ -415,6 +429,18 @@ func firstNonempty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func formatCommand(args []string) string {
+	formatted := make([]string, 0, len(args)+1)
+	formatted = append(formatted, "gh-scim")
+	for _, arg := range args {
+		if strings.ContainsAny(arg, " \t\n\"'") {
+			arg = strconv.Quote(arg)
+		}
+		formatted = append(formatted, arg)
+	}
+	return strings.Join(formatted, " ")
 }
 
 func compactUserName(prefix string) string {

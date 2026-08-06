@@ -130,6 +130,10 @@ go test -tags=e2e -count=1 -v ./test/e2e
 When `SCIM_BINARY` is unset, the suite builds the current checkout into a
 temporary directory and tests that executable.
 
+With `-v`, the test writes each `gh-scim` call and the JSON returned by the API
+to standard output. Authentication tokens are never included in the logged
+command.
+
 `SCIM_TOKEN` must belong to the Enterprise setup user and include the
 `scim:enterprise` scope. `SCIM_TEST_EMAIL_DOMAIN` must be configured without
 the leading `@`; each run generates a unique address under that domain. Set
