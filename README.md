@@ -97,3 +97,61 @@ gh scim groups delete <scim-group-id> --confirm
 
 All commands print the API's JSON response to stdout, making them easy to
 pipe into `jq` or other tooling.
+
+## Testing
+
+Run the non-destructive test suite locally with:
+
+```sh
+go test ./...
+```
+
+The live end-to-end suite builds the extension and exercises the complete user
+and group provisioning lifecycle against a real Enterprise account:
+
+```sh
+SCIM_TOKEN=... \
+SCIM_ENTERPRISE=your-enterprise \
+SCIM_TEST_EMAIL_DOMAIN=1yydq3.onmicrosoft.com \
+go test -tags=e2e -count=1 -v ./test/e2e
+```
+
+To test a specific prebuilt `gh-scim` executable directly, set `SCIM_BINARY`:
+
+```sh
+go build -o ./gh-scim .
+SCIM_BINARY="$PWD/gh-scim" \
+SCIM_TOKEN="$(gh auth token)" \
+SCIM_ENTERPRISE="your-enterprise-slug" \
+SCIM_TEST_EMAIL_DOMAIN="1yydq3.onmicrosoft.com" \
+go test -tags=e2e -count=1 -v ./test/e2e
+```
+
+When `SCIM_BINARY` is unset, the suite builds the current checkout into a
+temporary directory and tests that executable.
+
+`SCIM_TOKEN` must belong to the Enterprise setup user and include the
+`scim:enterprise` scope. `SCIM_TEST_EMAIL_DOMAIN` must be configured without
+the leading `@`; each run generates a unique address under that domain. Set
+`SCIM_HOSTNAME` when testing a GHE.com Enterprise.
+
+The live suite creates, updates, suspends, reactivates, and irreversibly deletes
+a user. It also creates, updates, changes membership for, and deletes a group.
+Resources use a `gh-scim-e2e-` ownership prefix, and cleanup additionally checks
+their generated external IDs and email before deleting them. Usernames use a
+compact `e2e-<hash>` form to remain safely below GitHub's 39-character limit.
+
+The `test` GitHub Actions workflow runs on every pull request and push, can be
+started manually, and runs daily at 06:00 UTC. Configure these repository
+settings:
+
+| Type | Name | Purpose |
+| --- | --- | --- |
+| Secret | `SCIM_TOKEN` | Setup-user token with `scim:enterprise` |
+| Secret | `SCIM_ENTERPRISE` | Enterprise slug |
+| Secret | `SCIM_TEST_EMAIL_DOMAIN` | Dedicated verified domain, such as `1yydq3.onmicrosoft.com` |
+| Variable | `SCIM_HOSTNAME` | Optional GHE.com API hostname |
+
+Live jobs are serialized to avoid concurrent cleanup. When secrets are not
+available, as on pull requests from forks, the ordinary tests still run and the
+live lifecycle is skipped.
