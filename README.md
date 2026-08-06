@@ -146,16 +146,21 @@ their generated external IDs and email before deleting them. Usernames use a
 compact `e2e-<hash>` form to remain safely below GitHub's 39-character limit.
 
 The `test` GitHub Actions workflow runs on every pull request and push, can be
-started manually, and runs daily at 06:00 UTC. Configure these repository
-settings:
+started manually, and runs daily at 06:00 UTC. It runs the live suite once for
+each Actions environment:
 
-| Type | Name | Purpose |
+| Environment | Target | Required configuration |
 | --- | --- | --- |
-| Secret | `SCIM_TOKEN` | Setup-user token with `scim:enterprise` |
-| Secret | `SCIM_ENTERPRISE` | Enterprise slug |
-| Secret | `SCIM_TEST_EMAIL_DOMAIN` | Dedicated verified domain, such as `1yydq3.onmicrosoft.com` |
-| Variable | `SCIM_HOSTNAME` | Optional GHE.com API hostname |
+| `dotcom` | GitHub.com | Secrets `SCIM_TOKEN`, `SCIM_ENTERPRISE`, and `SCIM_TEST_EMAIL_DOMAIN` |
+| `ghecom` | GHE.com subdomain | The same three secrets, plus variable `SCIM_HOSTNAME` set to the API hostname, such as `api.SUBDOMAIN.ghe.com` |
 
-Live jobs are serialized to avoid concurrent cleanup. When secrets are not
-available, as on pull requests from forks, the ordinary tests still run and the
-live lifecycle is skipped.
+Define the secrets and variable on their respective Actions environments, not
+at repository level, so each target receives its own Enterprise credentials
+and test email domain. `SCIM_TOKEN` must include `scim:enterprise`, and
+`SCIM_TEST_EMAIL_DOMAIN` must omit the leading `@`.
+
+Live jobs are serialized independently per environment to avoid concurrent
+cleanup against the same Enterprise. Both targets may run in parallel. When
+secrets are not available, as on pull requests from forks, the ordinary tests
+still run and the affected live lifecycle is skipped. A `ghecom` run with
+credentials but no `SCIM_HOSTNAME` fails as a configuration error.
