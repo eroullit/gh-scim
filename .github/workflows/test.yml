@@ -1,0 +1,66 @@
+name: test
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: go test ./...
+
+  live-scim:
+    needs: unit
+    name: live SCIM (${{ matrix.environment }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - environment: dotcom
+            require_hostname: false
+          - environment: ghecom
+            require_hostname: true
+    environment: ${{ matrix.environment }}
+    concurrency:
+      group: live-scim-${{ github.repository }}-${{ matrix.environment }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Run live provisioning lifecycle
+        env:
+          SCIM_TOKEN: ${{ secrets.SCIM_TOKEN }}
+          SCIM_ENTERPRISE: ${{ secrets.SCIM_ENTERPRISE }}
+          SCIM_TEST_EMAIL_DOMAIN: ${{ secrets.SCIM_TEST_EMAIL_DOMAIN }}
+          SCIM_HOSTNAME: ${{ vars.SCIM_HOSTNAME }}
+          REQUIRE_SCIM_HOSTNAME: ${{ matrix.require_hostname }}
+        run: |
+          if [[ -z "$SCIM_TOKEN" || -z "$SCIM_ENTERPRISE" || -z "$SCIM_TEST_EMAIL_DOMAIN" ]]; then
+            echo "Skipping ${{ matrix.environment }} live SCIM tests because required credentials are unavailable."
+            exit 0
+          fi
+          if [[ "$REQUIRE_SCIM_HOSTNAME" == "true" && -z "$SCIM_HOSTNAME" ]]; then
+            echo "SCIM_HOSTNAME must be configured for the ghecom environment." >&2
+            exit 1
+          fi
+          go test -tags=e2e -count=1 -v ./test/e2e
