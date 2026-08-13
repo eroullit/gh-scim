@@ -172,3 +172,8 @@ cleanup against the same Enterprise. Both targets may run in parallel. When
 secrets are not available, as on pull requests from forks, the ordinary tests
 still run and the affected live lifecycle is skipped. A `ghecom` run with
 credentials but no `SCIM_HOSTNAME` fails as a configuration error.
+
+## Support
+
+GitHub Support does not provide support for this integration.
+This is a community-supported project 🚀
