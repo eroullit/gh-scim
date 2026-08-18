@@ -151,7 +151,7 @@ Use the IdP `externalId` as the lookup key. Store the GitHub-generated SCIM `id`
 gh scim users list --filter 'externalId eq "idp-user-012345"'
 ```
 
-Create the user if no matching resource exists:
+Create the user if no matching resource exists and the desired `active` value is `true`. If a first-seen identity is inactive or unassigned, do not create it; record the skipped operation for audit purposes.
 
 ```bash
 gh scim users create \
@@ -230,62 +230,16 @@ A production deployment should use events for latency and a scheduled full recon
 Implement these controls around the extension:
 
 1. **Idempotent lookup:** Find resources by immutable `externalId`. Create only when no exact match exists.
-2. **Persistent mapping:** Store IdP `externalId` to GitHub SCIM `id` mappings for users and groups. Rebuild mappings from list endpoints when necessary.
+2. **Persistent mapping:** Store IdP `externalId` to GitHub SCIM `id` mappings for users and groups. Rebuild mappings from list endpoints when necessary. List commands return one page, so iterate with `--start-index` and `--count` until all `totalResults` resources have been collected.
 3. **Minimum changes:** Prefer `patch`, `add-members`, and `remove-members` over full replacement.
 4. **Dependency order:** Create users before groups and memberships. Remove memberships before deleting groups. Soft-deprovision users only after access-removal policy is satisfied.
 5. **Concurrency control:** Serialize writes for the same user or group. Prevent two reconciliation runs from writing concurrently.
 6. **Bounded rollout:** Stop a run when the number or percentage of proposed creates, suspensions, role changes, or membership removals exceeds an approved threshold.
-7. **Retries:** Retry `429` and transient `5xx` responses with exponential backoff and jitter. Do not repeatedly retry `400`, `401`, `403`, or `409` responses without correcting the underlying data or configuration.
+7. **Retries:** Retry `429`, rate-limit `403`, and transient `5xx` responses with exponential backoff and jitter. Classify a `403` using `Retry-After`, `x-ratelimit-remaining`, `x-ratelimit-reset`, and the response body; retry rate-limit responses after the indicated delay. Do not repeatedly retry other `400`, `401`, `403`, or `409` responses without correcting the underlying data or configuration.
 8. **Failure handling:** Send exhausted operations to a review queue and alert an owner. Never convert a failed lookup into an automatic create without proving the resource is absent.
 9. **Auditability:** Record the IdP external ID, GitHub SCIM ID, operation, timestamp, workflow run, and result. Exclude tokens and unnecessary personal data.
 
 GitHub advises limiting initial assignment to no more than 1,000 users per hour, or 1,000 users added to each assigned group per hour. See [Understand rate limits on GitHub](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/provisioning-user-accounts-with-scim/provisioning-users-and-groups-with-scim-using-the-rest-api#understand-rate-limits-on-github).
-
-## Example workflow runner
-
-The runner can be hosted in your existing automation platform, CI system, serverless environment, or scheduled job service. The platform must protect secrets, restrict changes to reviewed code, retain logs, and prevent concurrent writers.
-
-The following GitHub Actions example shows the execution boundary without prescribing an IdP implementation:
-
-```yaml
-name: Reconcile IdP with GitHub SCIM
-
-on:
-  workflow_dispatch:
-  schedule:
-    - cron: "17 * * * *"
-
-permissions:
-  contents: read
-
-concurrency:
-  group: enterprise-scim-writer
-  cancel-in-progress: false
-
-jobs:
-  reconcile:
-    runs-on: ubuntu-latest
-    environment: scim-production
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install gh-scim
-        env:
-          GH_TOKEN: ${{ secrets.SCIM_TOKEN }}
-        run: gh extension install eroullit/gh-scim
-
-      - name: Export normalized desired state
-        run: ./identity/export-desired-state > desired-state.json
-
-      - name: Reconcile
-        env:
-          GH_TOKEN: ${{ secrets.SCIM_TOKEN }}
-          GH_SCIM_ENTERPRISE: ${{ vars.GH_SCIM_ENTERPRISE }}
-          GH_HOST: ${{ vars.GH_HOST }}
-        run: ./identity/reconcile-with-gh-scim desired-state.json
-```
-
-The default `GITHUB_TOKEN` does not replace the setup user's `scim:enterprise` token. Protect the environment with appropriate reviewers and branch controls. Pin third-party actions and extension code according to your supply-chain policy.
 
 ## Test and roll out
 
