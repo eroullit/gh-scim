@@ -25,6 +25,9 @@ Every command requires the enterprise slug, either via `--enterprise` or the
 `GH_SCIM_ENTERPRISE` environment variable. For enterprises on GHE.com, set
 `--hostname` (or `GH_HOST`) to `api.SUBDOMAIN.ghe.com`.
 
+For an IdP-neutral production architecture, lifecycle safeguards, and rollout
+guidance, see the [customer integration guide](docs/gh-scim-customer-guide.md).
+
 ## Usage
 
 ### Users
