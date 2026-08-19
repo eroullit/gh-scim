@@ -100,14 +100,14 @@ pipe into `jq` or other tooling.
 
 ## Testing
 
-Run the non-destructive test suite locally with:
+Run the regular tests locally with:
 
 ```sh
 go test ./...
 ```
 
-The live end-to-end suite builds the extension and exercises the complete user
-and group provisioning lifecycle against a real Enterprise account:
+The live end-to-end suite exercises user and group provisioning against
+GitHub.com or GHE.com:
 
 ```sh
 SCIM_TOKEN=... \
@@ -116,62 +116,18 @@ SCIM_TEST_EMAIL_DOMAIN=1yydq3.onmicrosoft.com \
 go test -tags=e2e -count=1 -v ./test/e2e
 ```
 
-To test a specific prebuilt `gh-scim` executable directly, set `SCIM_BINARY`:
-
-```sh
-go build -o ./gh-scim .
-SCIM_BINARY="$PWD/gh-scim" \
-SCIM_TOKEN="$(gh auth token)" \
-SCIM_ENTERPRISE="your-enterprise-slug" \
-SCIM_TEST_EMAIL_DOMAIN="1yydq3.onmicrosoft.com" \
-go test -tags=e2e -count=1 -v ./test/e2e
-```
-
-When `SCIM_BINARY` is unset, the suite builds the current checkout into a
-temporary directory and tests that executable.
-
-With `-v`, the test writes each `gh-scim` call and the JSON returned by the API
-to standard output. Authentication tokens are never included in the logged
-command.
-
-`SCIM_TOKEN` must belong to the Enterprise setup user and include the
-`scim:enterprise` scope. `SCIM_TEST_EMAIL_DOMAIN` must be configured without
-the leading `@`; each run generates a unique address under that domain. Set
-`SCIM_HOSTNAME` when testing a GHE.com Enterprise.
-
-The live suite creates, updates, suspends, reactivates, and irreversibly deletes
-a user. It also creates, updates, changes membership for, and deletes a group.
-Resources use a `gh-scim-e2e-` ownership prefix, and cleanup additionally checks
-their stable test-only external IDs and prefixed display names before deleting
-them. Usernames use a compact `e2e-<hash>` form to remain safely below GitHub's
-39-character limit.
-
-Assertion failures run ordered cleanup through Go's `t.Cleanup`: the group is
-deleted before the user. If the process or runner is terminated before cleanup
-can run, the next execution performs a preflight lookup using the stable
-`gh-scim-e2e-group` and `gh-scim-e2e-user` external IDs, removes matching owned
-resources in the same order, and only then starts provisioning. Per-run
-usernames and email addresses remain unique.
-
-The `test` GitHub Actions workflow runs on every pull request and push, can be
-started manually, and runs daily at 06:00 UTC. It runs the live suite once for
-each Actions environment:
+GitHub Actions runs the live suite regularly against both targets:
 
 | Environment | Target | Required configuration |
 | --- | --- | --- |
 | `dotcom` | GitHub.com | Secrets `SCIM_TOKEN`, `SCIM_ENTERPRISE`, and `SCIM_TEST_EMAIL_DOMAIN` |
 | `ghecom` | GHE.com subdomain | The same three secrets, plus variable `SCIM_HOSTNAME` set to the API hostname, such as `api.SUBDOMAIN.ghe.com` |
 
-Define the secrets and variable on their respective Actions environments, not
-at repository level, so each target receives its own Enterprise credentials
-and test email domain. `SCIM_TOKEN` must include `scim:enterprise`, and
-`SCIM_TEST_EMAIL_DOMAIN` must omit the leading `@`.
-
-Live jobs are serialized independently per environment to avoid concurrent
-cleanup against the same Enterprise. Both targets may run in parallel. When
-secrets are not available, as on pull requests from forks, the ordinary tests
-still run and the affected live lifecycle is skipped. A `ghecom` run with
-credentials but no `SCIM_HOSTNAME` fails as a configuration error.
+Common pitfalls: use the setup user's token with the `scim:enterprise` scope,
+omit the leading `@` from `SCIM_TEST_EMAIL_DOMAIN`, and set `SCIM_HOSTNAME`
+for GHE.com. See
+[SCIM provisioning errors](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/understanding-iam-for-enterprises/troubleshooting-identity-and-access-management-for-your-enterprise?versionId=enterprise-cloud%40latest&productId=admin&restPage=managing-iam%2Cprovisioning-user-accounts-with-scim%2Cconfiguring-scim-provisioning-for-users#scim-provisioning-errors)
+for troubleshooting guidance.
 
 ## Support
 
