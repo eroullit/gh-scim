@@ -115,7 +115,9 @@ func googleRole(user googleUser, roleAttribute string) (string, bool, error) {
 
 func splitRoleAttribute(value string) (string, string, error) {
 	schema, field, found := strings.Cut(value, ".")
-	if !found || strings.TrimSpace(schema) == "" || strings.TrimSpace(field) == "" {
+	schema = strings.TrimSpace(schema)
+	field = strings.TrimSpace(field)
+	if !found || schema == "" || field == "" {
 		return "", "", fmt.Errorf("--role-attribute must use Schema.field format")
 	}
 	return schema, field, nil

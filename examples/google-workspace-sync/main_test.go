@@ -155,15 +155,67 @@ func TestValidateConfigRejectsScopedDeprovision(t *testing.T) {
 	cfg := config{
 		serviceAccountEmail: "sync@example.iam.gserviceaccount.com",
 		adminSubject:        "admin@example.com",
+		customerID:          "my_customer",
 		enterprise:          "example",
 		query:               "orgUnitPath='/pilot'",
 		deprovisionMissing:  true,
 		maxChanges:          20,
 		maxGroupMemberDelta: 20,
+		timeout:             2 * time.Minute,
 	}
 
 	if err := validateConfig(cfg); err == nil {
 		t.Fatal("validateConfig returned nil error for scoped deprovision")
+	}
+}
+
+func TestValidateConfigRejectsInvalidCustomerAndTimeout(t *testing.T) {
+	valid := config{
+		serviceAccountEmail: "sync@example.iam.gserviceaccount.com",
+		adminSubject:        "admin@example.com",
+		customerID:          "my_customer",
+		enterprise:          "example",
+		maxChanges:          20,
+		maxGroupMemberDelta: 20,
+		timeout:             2 * time.Minute,
+	}
+
+	tests := []struct {
+		name    string
+		update  func(*config)
+		wantErr string
+	}{
+		{
+			name:    "empty customer",
+			update:  func(cfg *config) { cfg.customerID = "" },
+			wantErr: "missing required configuration: --customer",
+		},
+		{
+			name:    "whitespace customer",
+			update:  func(cfg *config) { cfg.customerID = " \t" },
+			wantErr: "missing required configuration: --customer",
+		},
+		{
+			name:    "zero timeout",
+			update:  func(cfg *config) { cfg.timeout = 0 },
+			wantErr: "--timeout must be greater than 0",
+		},
+		{
+			name:    "negative timeout",
+			update:  func(cfg *config) { cfg.timeout = -time.Second },
+			wantErr: "--timeout must be greater than 0",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cfg := valid
+			test.update(&cfg)
+			err := validateConfig(cfg)
+			if err == nil || err.Error() != test.wantErr {
+				t.Fatalf("validateConfig error = %v, want %q", err, test.wantErr)
+			}
+		})
 	}
 }
 
@@ -301,6 +353,40 @@ func TestGoogleRole(t *testing.T) {
 			}
 			if err == nil && explicit != test.explicit {
 				t.Fatalf("explicit = %t, want %t", explicit, test.explicit)
+			}
+		})
+	}
+}
+
+func TestSplitRoleAttributeNormalizesWhitespace(t *testing.T) {
+	tests := []struct {
+		name       string
+		value      string
+		wantSchema string
+		wantField  string
+	}{
+		{
+			name:       "trims schema",
+			value:      " GitHub.role",
+			wantSchema: "GitHub",
+			wantField:  "role",
+		},
+		{
+			name:       "trims field",
+			value:      "GitHub. role ",
+			wantSchema: "GitHub",
+			wantField:  "role",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			schema, field, err := splitRoleAttribute(test.value)
+			if err != nil {
+				t.Fatalf("splitRoleAttribute error = %v", err)
+			}
+			if schema != test.wantSchema || field != test.wantField {
+				t.Fatalf("splitRoleAttribute = %q, %q; want %q, %q", schema, field, test.wantSchema, test.wantField)
 			}
 		})
 	}

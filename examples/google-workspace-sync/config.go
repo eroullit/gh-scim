@@ -80,6 +80,7 @@ func validateConfig(cfg config) error {
 	var missing []string
 	for name, value := range map[string]string{
 		"--admin-subject": cfg.adminSubject,
+		"--customer":      cfg.customerID,
 		"--enterprise":    cfg.enterprise,
 	} {
 		if strings.TrimSpace(value) == "" {
@@ -101,6 +102,9 @@ func validateConfig(cfg config) error {
 	}
 	if cfg.maxGroupMemberDelta < 0 {
 		return errors.New("--max-group-member-delta cannot be negative")
+	}
+	if cfg.timeout <= 0 {
+		return errors.New("--timeout must be greater than 0")
 	}
 	if cfg.deprovisionMissing && cfg.query != "" {
 		return errors.New("--deprovision-missing cannot be combined with --google-query because users outside the query would appear missing")
