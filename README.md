@@ -163,8 +163,8 @@ The `test` GitHub Actions workflow jobs run these tests regularly on the followi
 
 | Environment | Target | Required configuration |
 | --- | --- | --- |
-| `dotcom` | GitHub.com | Environment variables `SCIM_TOKEN`, `SCIM_ENTERPRISE`, and `SCIM_TEST_EMAIL_DOMAIN` |
-| `ghecom` | GHE.com subdomain | The same three variables, plus variable `SCIM_HOSTNAME` set to the API hostname, such as `api.SUBDOMAIN.ghe.com` |
+| `dotcom` | GitHub.com | Environment secrets `SCIM_TOKEN`, `SCIM_ENTERPRISE`, and `SCIM_TEST_EMAIL_DOMAIN` |
+| `ghecom` | GHE.com subdomain | The same three environment secrets, plus environment variable `SCIM_HOSTNAME` set to the API hostname, such as `api.SUBDOMAIN.ghe.com` |
 
 ## Support
 
