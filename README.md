@@ -159,7 +159,7 @@ The live suite creates, updates, suspends, reactivates, and irreversibly deletes
 a user. For groups, it creates, updates, changes membership, and deletes the
 group.
 
-The `test` GitHub Actions workflow jobs run these tests regularly on the following environments:
+The `test` GitHub Actions workflow runs these tests regularly across the following environments:
 
 | Environment | Target | Required configuration |
 | --- | --- | --- |
