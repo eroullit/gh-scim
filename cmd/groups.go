@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/eroullit/gh-scim/internal/scim"
+	"github.com/eroullit/gh-scim/scim"
 )
 
 func newGroupsCmd() *cobra.Command {
@@ -39,7 +39,7 @@ func newGroupsListCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			res, err := client.ListGroups(params)
+			res, err := client.ListGroups(cmd.Context(), params)
 			if err != nil {
 				return err
 			}
@@ -65,7 +65,7 @@ func newGroupsGetCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			g, err := client.GetGroup(args[0])
+			g, err := client.GetGroup(cmd.Context(), args[0])
 			if err != nil {
 				return err
 			}
@@ -117,7 +117,7 @@ their SCIM user id (see "gh scim users create"/"gh scim users list").`,
 			if err != nil {
 				return err
 			}
-			g, err := client.CreateGroup(f.toGroup())
+			g, err := client.CreateGroup(cmd.Context(), f.toGroup())
 			if err != nil {
 				return err
 			}
@@ -149,7 +149,7 @@ update a single attribute instead.`,
 			if err != nil {
 				return err
 			}
-			g, err := client.ReplaceGroup(args[0], f.toGroup())
+			g, err := client.ReplaceGroup(cmd.Context(), args[0], f.toGroup())
 			if err != nil {
 				return err
 			}
@@ -176,7 +176,7 @@ func newGroupsPatchCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			g, err := client.PatchGroup(args[0], scim.PatchOperation{Op: op, Path: path, Value: value})
+			g, err := client.PatchGroup(cmd.Context(), args[0], scim.PatchOperation{Op: op, Path: path, Value: value})
 			if err != nil {
 				return err
 			}
@@ -201,7 +201,7 @@ func newGroupsAddMembersCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			g, err := client.AddGroupMembers(args[0], args[1:]...)
+			g, err := client.AddGroupMembers(cmd.Context(), args[0], args[1:]...)
 			if err != nil {
 				return err
 			}
@@ -220,7 +220,7 @@ func newGroupsRemoveMembersCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			g, err := client.RemoveGroupMembers(args[0], args[1:]...)
+			g, err := client.RemoveGroupMembers(cmd.Context(), args[0], args[1:]...)
 			if err != nil {
 				return err
 			}
@@ -244,7 +244,7 @@ func newGroupsDeleteCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := client.DeleteGroup(args[0]); err != nil {
+			if err := client.DeleteGroup(cmd.Context(), args[0]); err != nil {
 				return err
 			}
 			fmt.Printf("group %s deleted\n", args[0])
