@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/eroullit/gh-scim/internal/scim"
+	"github.com/eroullit/gh-scim/scim"
 )
 
 func newUsersCmd() *cobra.Command {
@@ -39,7 +39,7 @@ func newUsersListCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			res, err := client.ListUsers(params)
+			res, err := client.ListUsers(cmd.Context(), params)
 			if err != nil {
 				return err
 			}
@@ -64,7 +64,7 @@ func newUsersGetCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			u, err := client.GetUser(args[0])
+			u, err := client.GetUser(cmd.Context(), args[0])
 			if err != nil {
 				return err
 			}
@@ -141,7 +141,7 @@ func newUsersCreateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			u, err := client.CreateUser(f.toUser())
+			u, err := client.CreateUser(cmd.Context(), f.toUser())
 			if err != nil {
 				return err
 			}
@@ -172,7 +172,7 @@ Any attribute not provided is removed, matching SCIM PUT semantics. Use
 			if err != nil {
 				return err
 			}
-			u, err := client.ReplaceUser(args[0], f.toUser())
+			u, err := client.ReplaceUser(cmd.Context(), args[0], f.toUser())
 			if err != nil {
 				return err
 			}
@@ -199,7 +199,7 @@ func newUsersPatchCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			u, err := client.PatchUser(args[0], scim.PatchOperation{Op: op, Path: path, Value: value})
+			u, err := client.PatchUser(cmd.Context(), args[0], scim.PatchOperation{Op: op, Path: path, Value: value})
 			if err != nil {
 				return err
 			}
@@ -224,7 +224,7 @@ func newUsersDeprovisionCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			u, err := client.SetUserActive(args[0], false)
+			u, err := client.SetUserActive(cmd.Context(), args[0], false)
 			if err != nil {
 				return err
 			}
@@ -243,7 +243,7 @@ func newUsersReactivateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			u, err := client.SetUserActive(args[0], true)
+			u, err := client.SetUserActive(cmd.Context(), args[0], true)
 			if err != nil {
 				return err
 			}
@@ -272,7 +272,7 @@ as a brand new user.`,
 			if err != nil {
 				return err
 			}
-			if err := client.DeleteUser(args[0]); err != nil {
+			if err := client.DeleteUser(cmd.Context(), args[0]); err != nil {
 				return err
 			}
 			fmt.Printf("user %s hard-deprovisioned\n", args[0])

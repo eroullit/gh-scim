@@ -173,6 +173,7 @@ This is a community-supported project 🚀
 
 ## Documentation
 
+- [Go library](scim/example_test.go).
 - [configuring SCIM provisioning](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/provisioning-user-accounts-with-scim/configuring-scim-provisioning-for-users).
 - [using the enterprise SCIM REST API](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/provisioning-user-accounts-with-scim/provisioning-users-and-groups-with-scim-using-the-rest-api).
 - [SAML and SCIM data mapping](https://docs.github.com/en/enterprise-cloud@latest/rest/enterprise-admin/scim#mapping-of-saml-and-scim-data).

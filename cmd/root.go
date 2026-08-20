@@ -5,13 +5,14 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 
-	"github.com/eroullit/gh-scim/internal/scim"
+	"github.com/eroullit/gh-scim/scim"
 )
 
 var (
@@ -21,7 +22,12 @@ var (
 
 // Execute runs the root gh-scim command.
 func Execute() error {
-	return newRootCmd().Execute()
+	return ExecuteContext(context.Background())
+}
+
+// ExecuteContext runs the root gh-scim command with ctx.
+func ExecuteContext(ctx context.Context) error {
+	return newRootCmd().ExecuteContext(ctx)
 }
 
 func newRootCmd() *cobra.Command {
@@ -52,7 +58,10 @@ func newClient() (*scim.Client, error) {
 	if enterprise == "" {
 		return nil, fmt.Errorf("missing enterprise slug: pass --enterprise or set GH_SCIM_ENTERPRISE")
 	}
-	return scim.NewClient(enterprise, hostname)
+	if hostname != "" {
+		return scim.NewClient(enterprise, scim.WithHost(hostname))
+	}
+	return scim.NewClient(enterprise)
 }
 
 func printJSON(v any) error {

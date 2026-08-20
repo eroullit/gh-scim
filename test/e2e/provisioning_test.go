@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/eroullit/gh-scim/internal/scim"
+	"github.com/eroullit/gh-scim/scim"
 )
 
 const (

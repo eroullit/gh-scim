@@ -1,6 +1,9 @@
 package scim
 
-import "net/http"
+import (
+	"context"
+	"net/http"
+)
 
 // Name represents the SCIM "name" complex attribute for a user.
 type Name struct {
@@ -60,9 +63,9 @@ type User struct {
 // ListUsers lists provisioned SCIM users for the enterprise.
 //
 // GET /scim/v2/enterprises/{enterprise}/Users
-func (c *Client) ListUsers(params ListParams) (*ListResponse[User], error) {
+func (c *Client) ListUsers(ctx context.Context, params ListParams) (*ListResponse[User], error) {
 	var out ListResponse[User]
-	if err := c.do(http.MethodGet, c.path("Users", "", params.query()), nil, &out); err != nil {
+	if err := c.do(ctx, http.MethodGet, c.path("Users", "", params.query()), nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -71,9 +74,9 @@ func (c *Client) ListUsers(params ListParams) (*ListResponse[User], error) {
 // GetUser retrieves a single SCIM user by its GitHub-assigned SCIM user id.
 //
 // GET /scim/v2/enterprises/{enterprise}/Users/{scim_user_id}
-func (c *Client) GetUser(scimUserID string) (*User, error) {
+func (c *Client) GetUser(ctx context.Context, scimUserID string) (*User, error) {
 	var out User
-	if err := c.do(http.MethodGet, c.path("Users", scimUserID, ""), nil, &out); err != nil {
+	if err := c.do(ctx, http.MethodGet, c.path("Users", scimUserID, ""), nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -82,12 +85,12 @@ func (c *Client) GetUser(scimUserID string) (*User, error) {
 // CreateUser provisions a new SCIM user for the enterprise.
 //
 // POST /scim/v2/enterprises/{enterprise}/Users
-func (c *Client) CreateUser(u User) (*User, error) {
+func (c *Client) CreateUser(ctx context.Context, u User) (*User, error) {
 	if len(u.Schemas) == 0 {
 		u.Schemas = []string{UserSchema}
 	}
 	var out User
-	if err := c.do(http.MethodPost, c.path("Users", "", ""), u, &out); err != nil {
+	if err := c.do(ctx, http.MethodPost, c.path("Users", "", ""), u, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -97,12 +100,12 @@ func (c *Client) CreateUser(u User) (*User, error) {
 // not provided is removed, matching the semantics of a SCIM PUT.
 //
 // PUT /scim/v2/enterprises/{enterprise}/Users/{scim_user_id}
-func (c *Client) ReplaceUser(scimUserID string, u User) (*User, error) {
+func (c *Client) ReplaceUser(ctx context.Context, scimUserID string, u User) (*User, error) {
 	if len(u.Schemas) == 0 {
 		u.Schemas = []string{UserSchema}
 	}
 	var out User
-	if err := c.do(http.MethodPut, c.path("Users", scimUserID, ""), u, &out); err != nil {
+	if err := c.do(ctx, http.MethodPut, c.path("Users", scimUserID, ""), u, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -111,10 +114,10 @@ func (c *Client) ReplaceUser(scimUserID string, u User) (*User, error) {
 // PatchUser updates individual attributes of an existing user.
 //
 // PATCH /scim/v2/enterprises/{enterprise}/Users/{scim_user_id}
-func (c *Client) PatchUser(scimUserID string, ops ...PatchOperation) (*User, error) {
+func (c *Client) PatchUser(ctx context.Context, scimUserID string, ops ...PatchOperation) (*User, error) {
 	var out User
 	req := NewPatchRequest(ops...)
-	if err := c.do(http.MethodPatch, c.path("Users", scimUserID, ""), req, &out); err != nil {
+	if err := c.do(ctx, http.MethodPatch, c.path("Users", scimUserID, ""), req, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -122,8 +125,8 @@ func (c *Client) PatchUser(scimUserID string, ops ...PatchOperation) (*User, err
 
 // SetUserActive is a convenience wrapper around PatchUser to soft-deprovision
 // (active=false) or reactivate (active=true) a user.
-func (c *Client) SetUserActive(scimUserID string, active bool) (*User, error) {
-	return c.PatchUser(scimUserID, PatchOperation{
+func (c *Client) SetUserActive(ctx context.Context, scimUserID string, active bool) (*User, error) {
+	return c.PatchUser(ctx, scimUserID, PatchOperation{
 		Op:    "replace",
 		Path:  "active",
 		Value: active,
@@ -134,6 +137,6 @@ func (c *Client) SetUserActive(scimUserID string, active bool) (*User, error) {
 // irreversible; the user must be provisioned again as a new user afterwards.
 //
 // DELETE /scim/v2/enterprises/{enterprise}/Users/{scim_user_id}
-func (c *Client) DeleteUser(scimUserID string) error {
-	return c.do(http.MethodDelete, c.path("Users", scimUserID, ""), nil, nil)
+func (c *Client) DeleteUser(ctx context.Context, scimUserID string) error {
+	return c.do(ctx, http.MethodDelete, c.path("Users", scimUserID, ""), nil, nil)
 }
