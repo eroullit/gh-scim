@@ -11,6 +11,10 @@ import (
 type APIError struct {
 	StatusCode int
 	Message    string
+	// SCIMType is the RFC 7644 "scimType" detail code (e.g. "uniqueness"),
+	// when the server included one. It is empty if the response body did
+	// not carry a SCIM error detail.
+	SCIMType   string
 	RequestURL string
 
 	err error
@@ -18,10 +22,14 @@ type APIError struct {
 
 // Error returns a human-readable API error.
 func (e *APIError) Error() string {
-	if e.Message != "" {
+	switch {
+	case e.Message != "" && e.SCIMType != "":
+		return fmt.Sprintf("SCIM API returned HTTP %d: %s (scimType: %s)", e.StatusCode, e.Message, e.SCIMType)
+	case e.Message != "":
 		return fmt.Sprintf("SCIM API returned HTTP %d: %s", e.StatusCode, e.Message)
+	default:
+		return fmt.Sprintf("SCIM API returned HTTP %d", e.StatusCode)
 	}
-	return fmt.Sprintf("SCIM API returned HTTP %d", e.StatusCode)
 }
 
 // Unwrap returns the underlying transport error.
@@ -45,6 +53,7 @@ func translateError(err error) error {
 	if httpErr.RequestURL != nil {
 		requestURL = httpErr.RequestURL.String()
 	}
+
 	return &APIError{
 		StatusCode: httpErr.StatusCode,
 		Message:    httpErr.Message,

@@ -167,7 +167,7 @@ func NewClient(enterprise string, options ...Option) (*Client, error) {
 		return nil, err
 	}
 
-	rest, err := api.NewRESTClient(api.ClientOptions{
+	httpClient, err := api.NewHTTPClient(api.ClientOptions{
 		AuthToken: opts.token,
 		Host:      host,
 		Headers: map[string]string{
@@ -177,10 +177,16 @@ func NewClient(enterprise string, options ...Option) (*Client, error) {
 		Transport: opts.transport,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("building REST client: %w", err)
+		return nil, fmt.Errorf("building HTTP client: %w", err)
 	}
 
-	return &Client{doer: rest, enterprise: enterprise}, nil
+	return &Client{
+		doer: &restDoer{
+			client:  httpClient,
+			baseURL: apiBaseURL(host),
+		},
+		enterprise: enterprise,
+	}, nil
 }
 
 func validateHost(host string) error {
@@ -189,6 +195,14 @@ func validateHost(host string) error {
 		return nil
 	}
 	return fmt.Errorf("unsupported GitHub host %q: enterprise SCIM supports GitHub.com and GHE.com, not GitHub Enterprise Server", host)
+}
+
+func apiBaseURL(host string) string {
+	normalized := auth.NormalizeHostname(host)
+	if normalized == "github.com" {
+		return "https://api.github.com/"
+	}
+	return fmt.Sprintf("https://api.%s/", normalized)
 }
 
 // ListParams holds common pagination/filter query parameters supported by
@@ -258,12 +272,21 @@ func NewPatchRequest(ops ...PatchOperation) PatchRequest {
 	}
 }
 
-func (c *Client) path(resource, id, query string) string {
-	p := fmt.Sprintf("scim/v2/enterprises/%s/%s", c.enterprise, resource)
-	if id != "" {
-		p = fmt.Sprintf("%s/%s", p, url.PathEscape(id))
+// collectionPath builds the path for a resource collection endpoint (e.g.
+// list or create), such as "scim/v2/enterprises/{enterprise}/Users".
+func (c *Client) collectionPath(resource, query string) string {
+	return fmt.Sprintf("scim/v2/enterprises/%s/%s", url.PathEscape(c.enterprise), resource) + query
+}
+
+// itemPath builds the path for a single-resource endpoint (e.g. get, replace,
+// patch, or delete), such as "scim/v2/enterprises/{enterprise}/Users/{id}".
+// It returns an error if id is empty so callers cannot silently fall back to
+// the collection endpoint.
+func (c *Client) itemPath(resource, id, query string) (string, error) {
+	if strings.TrimSpace(id) == "" {
+		return "", fmt.Errorf("%s id is required", resource)
 	}
-	return p + query
+	return fmt.Sprintf("%s/%s", c.collectionPath(resource, ""), url.PathEscape(id)) + query, nil
 }
 
 // do issues an HTTP request against the SCIM API, marshaling body as JSON and

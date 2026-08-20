@@ -28,7 +28,7 @@ type Group struct {
 // GET /scim/v2/enterprises/{enterprise}/Groups
 func (c *Client) ListGroups(ctx context.Context, params ListParams) (*ListResponse[Group], error) {
 	var out ListResponse[Group]
-	if err := c.do(ctx, http.MethodGet, c.path("Groups", "", params.query()), nil, &out); err != nil {
+	if err := c.do(ctx, http.MethodGet, c.collectionPath("Groups", params.query()), nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -38,8 +38,12 @@ func (c *Client) ListGroups(ctx context.Context, params ListParams) (*ListRespon
 //
 // GET /scim/v2/enterprises/{enterprise}/Groups/{scim_group_id}
 func (c *Client) GetGroup(ctx context.Context, scimGroupID string) (*Group, error) {
+	p, err := c.itemPath("Groups", scimGroupID, "")
+	if err != nil {
+		return nil, err
+	}
 	var out Group
-	if err := c.do(ctx, http.MethodGet, c.path("Groups", scimGroupID, ""), nil, &out); err != nil {
+	if err := c.do(ctx, http.MethodGet, p, nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -54,7 +58,7 @@ func (c *Client) CreateGroup(ctx context.Context, g Group) (*Group, error) {
 		g.Schemas = []string{GroupSchema}
 	}
 	var out Group
-	if err := c.do(ctx, http.MethodPost, c.path("Groups", "", ""), g, &out); err != nil {
+	if err := c.do(ctx, http.MethodPost, c.collectionPath("Groups", ""), g, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -65,11 +69,15 @@ func (c *Client) CreateGroup(ctx context.Context, g Group) (*Group, error) {
 //
 // PUT /scim/v2/enterprises/{enterprise}/Groups/{scim_group_id}
 func (c *Client) ReplaceGroup(ctx context.Context, scimGroupID string, g Group) (*Group, error) {
+	p, err := c.itemPath("Groups", scimGroupID, "")
+	if err != nil {
+		return nil, err
+	}
 	if len(g.Schemas) == 0 {
 		g.Schemas = []string{GroupSchema}
 	}
 	var out Group
-	if err := c.do(ctx, http.MethodPut, c.path("Groups", scimGroupID, ""), g, &out); err != nil {
+	if err := c.do(ctx, http.MethodPut, p, g, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -80,9 +88,13 @@ func (c *Client) ReplaceGroup(ctx context.Context, scimGroupID string, g Group) 
 //
 // PATCH /scim/v2/enterprises/{enterprise}/Groups/{scim_group_id}
 func (c *Client) PatchGroup(ctx context.Context, scimGroupID string, ops ...PatchOperation) (*Group, error) {
+	p, err := c.itemPath("Groups", scimGroupID, "")
+	if err != nil {
+		return nil, err
+	}
 	var out Group
 	req := NewPatchRequest(ops...)
-	if err := c.do(ctx, http.MethodPatch, c.path("Groups", scimGroupID, ""), req, &out); err != nil {
+	if err := c.do(ctx, http.MethodPatch, p, req, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -120,5 +132,9 @@ func (c *Client) RemoveGroupMembers(ctx context.Context, scimGroupID string, mem
 //
 // DELETE /scim/v2/enterprises/{enterprise}/Groups/{scim_group_id}
 func (c *Client) DeleteGroup(ctx context.Context, scimGroupID string) error {
-	return c.do(ctx, http.MethodDelete, c.path("Groups", scimGroupID, ""), nil, nil)
+	p, err := c.itemPath("Groups", scimGroupID, "")
+	if err != nil {
+		return err
+	}
+	return c.do(ctx, http.MethodDelete, p, nil, nil)
 }

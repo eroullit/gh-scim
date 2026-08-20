@@ -65,7 +65,7 @@ type User struct {
 // GET /scim/v2/enterprises/{enterprise}/Users
 func (c *Client) ListUsers(ctx context.Context, params ListParams) (*ListResponse[User], error) {
 	var out ListResponse[User]
-	if err := c.do(ctx, http.MethodGet, c.path("Users", "", params.query()), nil, &out); err != nil {
+	if err := c.do(ctx, http.MethodGet, c.collectionPath("Users", params.query()), nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -75,8 +75,12 @@ func (c *Client) ListUsers(ctx context.Context, params ListParams) (*ListRespons
 //
 // GET /scim/v2/enterprises/{enterprise}/Users/{scim_user_id}
 func (c *Client) GetUser(ctx context.Context, scimUserID string) (*User, error) {
+	p, err := c.itemPath("Users", scimUserID, "")
+	if err != nil {
+		return nil, err
+	}
 	var out User
-	if err := c.do(ctx, http.MethodGet, c.path("Users", scimUserID, ""), nil, &out); err != nil {
+	if err := c.do(ctx, http.MethodGet, p, nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -90,7 +94,7 @@ func (c *Client) CreateUser(ctx context.Context, u User) (*User, error) {
 		u.Schemas = []string{UserSchema}
 	}
 	var out User
-	if err := c.do(ctx, http.MethodPost, c.path("Users", "", ""), u, &out); err != nil {
+	if err := c.do(ctx, http.MethodPost, c.collectionPath("Users", ""), u, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -101,11 +105,15 @@ func (c *Client) CreateUser(ctx context.Context, u User) (*User, error) {
 //
 // PUT /scim/v2/enterprises/{enterprise}/Users/{scim_user_id}
 func (c *Client) ReplaceUser(ctx context.Context, scimUserID string, u User) (*User, error) {
+	p, err := c.itemPath("Users", scimUserID, "")
+	if err != nil {
+		return nil, err
+	}
 	if len(u.Schemas) == 0 {
 		u.Schemas = []string{UserSchema}
 	}
 	var out User
-	if err := c.do(ctx, http.MethodPut, c.path("Users", scimUserID, ""), u, &out); err != nil {
+	if err := c.do(ctx, http.MethodPut, p, u, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -115,9 +123,13 @@ func (c *Client) ReplaceUser(ctx context.Context, scimUserID string, u User) (*U
 //
 // PATCH /scim/v2/enterprises/{enterprise}/Users/{scim_user_id}
 func (c *Client) PatchUser(ctx context.Context, scimUserID string, ops ...PatchOperation) (*User, error) {
+	p, err := c.itemPath("Users", scimUserID, "")
+	if err != nil {
+		return nil, err
+	}
 	var out User
 	req := NewPatchRequest(ops...)
-	if err := c.do(ctx, http.MethodPatch, c.path("Users", scimUserID, ""), req, &out); err != nil {
+	if err := c.do(ctx, http.MethodPatch, p, req, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -138,5 +150,9 @@ func (c *Client) SetUserActive(ctx context.Context, scimUserID string, active bo
 //
 // DELETE /scim/v2/enterprises/{enterprise}/Users/{scim_user_id}
 func (c *Client) DeleteUser(ctx context.Context, scimUserID string) error {
-	return c.do(ctx, http.MethodDelete, c.path("Users", scimUserID, ""), nil, nil)
+	p, err := c.itemPath("Users", scimUserID, "")
+	if err != nil {
+		return err
+	}
+	return c.do(ctx, http.MethodDelete, p, nil, nil)
 }
