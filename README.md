@@ -164,7 +164,7 @@ The `test` GitHub Actions workflow jobs run these tests regularly on the followi
 | Environment | Target | Required configuration |
 | --- | --- | --- |
 | `dotcom` | GitHub.com | Environment secrets `SCIM_TOKEN`, `SCIM_ENTERPRISE`, and `SCIM_TEST_EMAIL_DOMAIN` |
-| `ghecom` | GHE.com subdomain | The same three environment secrets, plus environment variable `SCIM_HOSTNAME` set to the API hostname, such as `api.SUBDOMAIN.ghe.com` |
+| `ghecom` | GHE.com subdomain | The same three environment secrets, plus GitHub Actions environment variable `SCIM_HOSTNAME` set to the API hostname, such as `api.SUBDOMAIN.ghe.com` |
 
 ## Support
 
@@ -178,6 +178,6 @@ This is a community-supported project 🚀
 - [SAML and SCIM data mapping](https://docs.github.com/en/enterprise-cloud@latest/rest/enterprise-admin/scim#mapping-of-saml-and-scim-data).
 - [deprovisioning and reinstating users](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/provisioning-user-accounts-with-scim/deprovisioning-and-reinstating-users).
 - [managing team memberships with IdP groups](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/provisioning-user-accounts-with-scim/managing-team-memberships-with-identity-provider-groups).
-- [Best practices for SCIM provisioning](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/provisioning-user-accounts-with-scim/provisioning-users-and-groups-with-scim-using-the-rest-api#best-practices-for-scim-provisioning-with-githubs-rest-api).
+- [best practices for SCIM provisioning](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/provisioning-user-accounts-with-scim/provisioning-users-and-groups-with-scim-using-the-rest-api#best-practices-for-scim-provisioning-with-githubs-rest-api).
 - [SCIM troubleshooting tips](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/provisioning-user-accounts-with-scim/provisioning-users-and-groups-with-scim-using-the-rest-api#troubleshooting-scim-provisioning).
 - [Streaming the audit log for your enterprise](https://docs.github.com/en/enterprise-cloud@latest/admin/monitoring-activity-in-your-enterprise/reviewing-audit-logs-for-your-enterprise/streaming-the-audit-log-for-your-enterprise).
