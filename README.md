@@ -116,6 +116,10 @@ SCIM_TEST_EMAIL_DOMAIN=1yydq3.onmicrosoft.com \
 go test -tags=e2e -count=1 -v ./test/e2e
 ```
 
+The live suite enables verbose API tracing for each `gh-scim` invocation. With
+`-v`, the test output includes the HTTP method, URL and query parameters,
+sanitized headers, and JSON request body.
+
 GitHub Actions runs the live suite regularly against both targets:
 
 | Environment | Target | Required configuration |

@@ -3,6 +3,7 @@
 package e2e
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -36,6 +37,11 @@ type liveConfig struct {
 	token      string
 	email      string
 	prefix     string
+}
+
+type commandOutput struct {
+	stdout []byte
+	stderr []byte
 }
 
 func TestCompactUserName(t *testing.T) {
@@ -293,7 +299,7 @@ func repositoryRoot(t *testing.T) string {
 	}
 }
 
-func (cfg liveConfig) run(args ...string) ([]byte, error) {
+func (cfg liveConfig) run(args ...string) (commandOutput, error) {
 	rootArgs := []string{"--enterprise", cfg.enterprise}
 	if cfg.hostname != "" {
 		rootArgs = append(rootArgs, "--hostname", cfg.hostname)
@@ -304,10 +310,18 @@ func (cfg liveConfig) run(args ...string) ([]byte, error) {
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, cfg.binary, rootArgs...)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 	cmd.Env = envWith(os.Environ(), map[string]string{
+		"GH_DEBUG": "api",
 		"GH_TOKEN": cfg.token,
 	})
-	output, err := cmd.CombinedOutput()
+	err := cmd.Run()
+	output := commandOutput{
+		stdout: stdout.Bytes(),
+		stderr: stderr.Bytes(),
+	}
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		return output, fmt.Errorf("command timed out after %s: %s", commandTimeout, strings.Join(args, " "))
 	}
@@ -322,12 +336,15 @@ func runCommand(t *testing.T, cfg liveConfig, args ...string) ([]byte, error) {
 	t.Logf("gh-scim call: %s", formatCommand(args))
 
 	output, err := cfg.run(args...)
-	if len(output) > 0 {
-		t.Logf("gh-scim stdout:\n%s", strings.TrimSpace(string(output)))
+	if len(output.stderr) > 0 {
+		t.Logf("gh-scim HTTP trace:\n%s", strings.TrimSpace(string(output.stderr)))
+	}
+	if len(output.stdout) > 0 {
+		t.Logf("gh-scim stdout:\n%s", strings.TrimSpace(string(output.stdout)))
 	} else {
 		t.Log("gh-scim stdout: <empty response>")
 	}
-	return output, err
+	return output.stdout, err
 }
 
 func runJSON[T any](t *testing.T, cfg liveConfig, args ...string) T {
