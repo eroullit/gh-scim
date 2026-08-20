@@ -153,12 +153,13 @@ SCIM_TEST_EMAIL_DOMAIN="1yydq3.onmicrosoft.com" \
 go test -tags=e2e -count=1 -v ./test/e2e
 ```
 
-`SCIM_HOSTNAME` when testing a GHE.com Enterprise.
+Set `SCIM_HOSTNAME` when testing a GHE.com Enterprise.
 
 The live suite creates, updates, suspends, reactivates, and irreversibly deletes
-a user and a group.
+a user. For groups, it creates, updates, changes membership, and deletes the
+group.
 
-The `test` GitHub Actions workflow jobs runs this test regularly on the following environments:
+The `test` GitHub Actions workflow jobs run these tests regularly on the following environments:
 
 | Environment | Target | Required configuration |
 | --- | --- | --- |
@@ -178,4 +179,5 @@ This is a community-supported project 🚀
 - [deprovisioning and reinstating users](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/provisioning-user-accounts-with-scim/deprovisioning-and-reinstating-users),
 - [managing team memberships with IdP groups](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/provisioning-user-accounts-with-scim/managing-team-memberships-with-identity-provider-groups).
 - [Best practices for SCIM provisioning](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/provisioning-user-accounts-with-scim/provisioning-users-and-groups-with-scim-using-the-rest-api#best-practices-for-scim-provisioning-with-githubs-rest-api)
-- [SCIM troubleshooting tips](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/provisioning-user-accounts-with-scim/provisioning-users-and-groups-with-scim-using-the-rest-api#troubleshooting-scim-provisioning) in mind.
+- [SCIM troubleshooting tips](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/provisioning-user-accounts-with-scim/provisioning-users-and-groups-with-scim-using-the-rest-api#troubleshooting-scim-provisioning)
+- [Streaming the audit log for your enterprise](https://docs.github.com/en/enterprise-cloud@latest/admin/monitoring-activity-in-your-enterprise/reviewing-audit-logs-for-your-enterprise/streaming-the-audit-log-for-your-enterprise)
