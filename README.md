@@ -36,7 +36,7 @@ GitHub Enterprise Server setup is untested.
 Before using it for automated provisioning:
 
 1. [Create the enterprise with Enterprise Managed Users.](https://docs.github.com/en/enterprise-cloud@latest/admin/data-residency/about-github-enterprise-cloud-with-data-residency)
-2. Configure and test SAML authentication. OIDC SSO is not supported
+2. Configure and test SAML authentication. OIDC SSO is supported only with Microsoft Entra ID, and open SCIM configuration is unavailable when OIDC SSO is enabled.
 3. [Enable open SCIM configuration.](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/provisioning-user-accounts-with-scim/configuring-scim-provisioning-for-users?versionId=enterprise-cloud%40latest&productId=admin&restPage=managing-iam%2Cunderstanding-iam-for-enterprises%2Cgetting-started-with-enterprise-managed-users#configuring-provisioning-for-other-identity-management-systems)
 
 `gh scim` is a CLI tool which can be invoked manually by an administrator but it makes the most sense to integrate it with the IdP.
