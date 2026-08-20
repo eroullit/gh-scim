@@ -23,7 +23,13 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+          cache-dependency-path: |
+            go.sum
+            examples/google-workspace-sync/go.sum
       - run: go test ./...
+      - name: Test Google Workspace example
+        working-directory: examples/google-workspace-sync
+        run: go test -race ./...
 
   live-scim:
     needs: unit

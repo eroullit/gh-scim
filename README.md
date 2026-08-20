@@ -129,6 +129,10 @@ for GHE.com. See
 [SCIM provisioning errors](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/understanding-iam-for-enterprises/troubleshooting-identity-and-access-management-for-your-enterprise?versionId=enterprise-cloud%40latest&productId=admin&restPage=managing-iam%2Cprovisioning-user-accounts-with-scim%2Cconfiguring-scim-provisioning-for-users#scim-provisioning-errors)
 for troubleshooting guidance.
 
+## Examples
+
+- [Scheduled Google Workspace user reconciliation](examples/google-workspace-sync/README.md)
+
 ## Support
 
 GitHub Support does not provide support for this integration.
