@@ -136,7 +136,7 @@ GitHub.com or GHE.com:
 ```sh
 SCIM_TOKEN=... \
 SCIM_ENTERPRISE=your-enterprise \
-SCIM_TEST_EMAIL_DOMAIN=1yydq3.onmicrosoft.com \
+SCIM_TEST_EMAIL_DOMAIN=example.onmicrosoft.com \
 go test -tags=e2e -count=1 -v ./test/e2e
 ```
 
@@ -149,7 +149,7 @@ go build -o ./gh-scim .
 SCIM_BINARY="$PWD/gh-scim" \
 SCIM_TOKEN="$(gh auth token)" \
 SCIM_ENTERPRISE="your-enterprise-slug" \
-SCIM_TEST_EMAIL_DOMAIN="1yydq3.onmicrosoft.com" \
+SCIM_TEST_EMAIL_DOMAIN="example.onmicrosoft.com" \
 go test -tags=e2e -count=1 -v ./test/e2e
 ```
 
