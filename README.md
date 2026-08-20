@@ -24,8 +24,8 @@ Every command requires the enterprise slug, either via `--enterprise` or the
 `--hostname` (or `GH_HOST`) to `api.SUBDOMAIN.ghe.com`.
 
 Only `list` and `get` commands are safe to run ad-hoc.
-Store automation credentials in an approved secret manager, keep them out of command arguments and logs, and
-define a tested rotation and recovery procedure.
+Store automation credentials in an approved secret manager and keep them out of
+command arguments and logs. Define a tested rotation and recovery procedure.
 
 ## Production IdP integration
 
