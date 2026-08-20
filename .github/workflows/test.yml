@@ -8,6 +8,7 @@ on:
       - "**.go"
       - go.mod
       - go.sum
+      - .github/workflows/test.yml
   push:
     branches:
       - main
