@@ -15,20 +15,41 @@ gh extension install eroullit/gh-scim
 ## Authentication
 
 Requests are authenticated using `gh`'s normal token resolution (`gh auth
-login`, `GH_TOKEN`, etc). The token must have the `scim:enterprise` scope.
-GitHub recommends authenticating as the enterprise's setup user; other
-identities are typically created through SCIM itself. Only `GET` requests
-are safe to run ad hoc — writes (`create`/`replace`/`patch`/`delete`) should
-normally come from a single identity management system.
+login`, `GH_TOKEN`, etc). Use a personal access token (classic) for the
+enterprise setup user with only the `scim:enterprise` scope. Other identities
+are typically created through SCIM itself.
 
 Every command requires the enterprise slug, either via `--enterprise` or the
-`GH_SCIM_ENTERPRISE` environment variable. For enterprises on GHE.com, set
+`GH_SCIM_ENTERPRISE` environment variable. For [enterprises on GHE.com](https://docs.github.com/en/enterprise-cloud@latest/admin/data-residency/about-github-enterprise-cloud-with-data-residency), set
 `--hostname` (or `GH_HOST`) to `api.SUBDOMAIN.ghe.com`.
 
-For an IdP-neutral production architecture, lifecycle safeguards, and rollout
-guidance, see the [customer integration guide](docs/gh-scim-customer-guide.md).
+Only `list` and `get` commands are safe to run ad-hoc.
+Store automation credentials in an approved secret manager, keep them out of command arguments and logs, and
+define a tested rotation and recovery procedure.
 
-## Usage
+## Production IdP integration
+
+`gh scim` targets the enterprise SCIM API for Enterprise Managed Users, not
+organization-level SCIM for personal accounts.
+GitHub Enterprise Server setup is untested.
+
+Before using it for automated provisioning:
+
+1. [Create the enterprise with Enterprise Managed Users.](https://docs.github.com/en/enterprise-cloud@latest/admin/data-residency/about-github-enterprise-cloud-with-data-residency)
+2. Configure and test SAML authentication. OIDC SSO is not supported
+3. [Enable open SCIM configuration.](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/provisioning-user-accounts-with-scim/configuring-scim-provisioning-for-users?versionId=enterprise-cloud%40latest&productId=admin&restPage=managing-iam%2Cunderstanding-iam-for-enterprises%2Cgetting-started-with-enterprise-managed-users#configuring-provisioning-for-other-identity-management-systems)
+
+`gh scim` is a CLI tool which can be invoked manually by an administrator but it makes the most sense to integrate it with the IdP.
+
+```mermaid
+flowchart LR
+    events["IdP events or webhooks"] --> adapter["IdP adapter"]
+    schedule["Scheduled export or API query"] --> adapter
+    adapter --> cli["Normalized desired state<br/>single client calling gh scim"]
+    cli --> github["GitHub enterprise<br/>SCIM API"]
+```
+
+## CLI Usage
 
 ### Users
 
@@ -123,20 +144,38 @@ The live suite enables verbose API tracing for each `gh-scim` invocation. With
 `-v`, the test output includes the HTTP method, URL and query parameters,
 sanitized headers, and JSON request body.
 
-GitHub Actions runs the live suite regularly against both targets:
+```sh
+go build -o ./gh-scim .
+SCIM_BINARY="$PWD/gh-scim" \
+SCIM_TOKEN="$(gh auth token)" \
+SCIM_ENTERPRISE="your-enterprise-slug" \
+SCIM_TEST_EMAIL_DOMAIN="1yydq3.onmicrosoft.com" \
+go test -tags=e2e -count=1 -v ./test/e2e
+```
+
+`SCIM_HOSTNAME` when testing a GHE.com Enterprise.
+
+The live suite creates, updates, suspends, reactivates, and irreversibly deletes
+a user and a group.
+
+The `test` GitHub Actions workflow jobs runs this test regularly on the following environments:
 
 | Environment | Target | Required configuration |
 | --- | --- | --- |
-| `dotcom` | GitHub.com | Secrets `SCIM_TOKEN`, `SCIM_ENTERPRISE`, and `SCIM_TEST_EMAIL_DOMAIN` |
-| `ghecom` | GHE.com subdomain | The same three secrets, plus variable `SCIM_HOSTNAME` set to the API hostname, such as `api.SUBDOMAIN.ghe.com` |
-
-Common pitfalls: use the setup user's token with the `scim:enterprise` scope,
-omit the leading `@` from `SCIM_TEST_EMAIL_DOMAIN`, and set `SCIM_HOSTNAME`
-for GHE.com. See
-[SCIM provisioning errors](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/understanding-iam-for-enterprises/troubleshooting-identity-and-access-management-for-your-enterprise?versionId=enterprise-cloud%40latest&productId=admin&restPage=managing-iam%2Cprovisioning-user-accounts-with-scim%2Cconfiguring-scim-provisioning-for-users#scim-provisioning-errors)
-for troubleshooting guidance.
+| `dotcom` | GitHub.com | Environment variable `SCIM_TOKEN`, `SCIM_ENTERPRISE`, and `SCIM_TEST_EMAIL_DOMAIN` |
+| `ghecom` | GHE.com subdomain | The same three variables, plus variable `SCIM_HOSTNAME` set to the API hostname, such as `api.SUBDOMAIN.ghe.com` |
 
 ## Support
 
 GitHub Support does not provide support for this integration.
 This is a community-supported project 🚀
+
+## Documentation
+
+- [configuring SCIM provisioning](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/provisioning-user-accounts-with-scim/configuring-scim-provisioning-for-users),
+- [using the enterprise SCIM REST API](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/provisioning-user-accounts-with-scim/provisioning-users-and-groups-with-scim-using-the-rest-api),
+- [SAML and SCIM data mapping](https://docs.github.com/en/enterprise-cloud@latest/rest/enterprise-admin/scim#mapping-of-saml-and-scim-data),
+- [deprovisioning and reinstating users](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/provisioning-user-accounts-with-scim/deprovisioning-and-reinstating-users),
+- [managing team memberships with IdP groups](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/provisioning-user-accounts-with-scim/managing-team-memberships-with-identity-provider-groups).
+- [Best practices for SCIM provisioning](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/provisioning-user-accounts-with-scim/provisioning-users-and-groups-with-scim-using-the-rest-api#best-practices-for-scim-provisioning-with-githubs-rest-api)
+- [SCIM troubleshooting tips](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/provisioning-user-accounts-with-scim/provisioning-users-and-groups-with-scim-using-the-rest-api#troubleshooting-scim-provisioning) in mind.
