@@ -257,6 +257,107 @@ func TestClientOperations(t *testing.T) {
 	}
 }
 
+// TestEmptyItemIDIsRejected ensures every single-resource operation rejects
+// an empty id instead of silently falling back to the collection endpoint
+// (e.g. GetUser(ctx, "") must not decode a Users list response into a
+// mostly zero-valued User).
+func TestEmptyItemIDIsRejected(t *testing.T) {
+	tests := []struct {
+		name string
+		run  func(context.Context, *scim.Client) error
+	}{
+		{name: "get user", run: func(ctx context.Context, c *scim.Client) error {
+			_, err := c.GetUser(ctx, "")
+			return err
+		}},
+		{name: "replace user", run: func(ctx context.Context, c *scim.Client) error {
+			_, err := c.ReplaceUser(ctx, "", scim.User{})
+			return err
+		}},
+		{name: "patch user", run: func(ctx context.Context, c *scim.Client) error {
+			_, err := c.PatchUser(ctx, "")
+			return err
+		}},
+		{name: "set user active", run: func(ctx context.Context, c *scim.Client) error {
+			_, err := c.SetUserActive(ctx, "", true)
+			return err
+		}},
+		{name: "delete user", run: func(ctx context.Context, c *scim.Client) error {
+			return c.DeleteUser(ctx, "")
+		}},
+		{name: "get group", run: func(ctx context.Context, c *scim.Client) error {
+			_, err := c.GetGroup(ctx, "")
+			return err
+		}},
+		{name: "replace group", run: func(ctx context.Context, c *scim.Client) error {
+			_, err := c.ReplaceGroup(ctx, "", scim.Group{})
+			return err
+		}},
+		{name: "patch group", run: func(ctx context.Context, c *scim.Client) error {
+			_, err := c.PatchGroup(ctx, "")
+			return err
+		}},
+		{name: "add group members", run: func(ctx context.Context, c *scim.Client) error {
+			_, err := c.AddGroupMembers(ctx, "", "user-1")
+			return err
+		}},
+		{name: "remove group members", run: func(ctx context.Context, c *scim.Client) error {
+			_, err := c.RemoveGroupMembers(ctx, "", "user-1")
+			return err
+		}},
+		{name: "delete group", run: func(ctx context.Context, c *scim.Client) error {
+			return c.DeleteGroup(ctx, "")
+		}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doer := &recordingDoer{response: []byte(`{}`)}
+			client, err := scim.NewClient("acme", scim.WithDoer(doer))
+			if err != nil {
+				t.Fatalf("NewClient() error = %v", err)
+			}
+
+			err = tt.run(context.Background(), client)
+			if err == nil {
+				t.Fatal("error = nil, want an error for an empty id")
+			}
+			if !strings.Contains(err.Error(), "id is required") {
+				t.Errorf("error = %q, want it to mention that the id is required", err)
+			}
+
+			doer.mu.Lock()
+			calls := len(doer.calls)
+			doer.mu.Unlock()
+			if calls != 0 {
+				t.Errorf("recorded %d calls, want 0 (no request should be issued for an empty id)", calls)
+			}
+		})
+	}
+}
+
+// TestEnterpriseSlugIsEscaped ensures the enterprise slug is percent-encoded
+// as a path segment, matching how resource ids are already escaped, so a
+// slug containing reserved characters cannot redirect the request to a
+// different route.
+func TestEnterpriseSlugIsEscaped(t *testing.T) {
+	doer := &recordingDoer{response: []byte(`{}`)}
+	client, err := scim.NewClient("acme/corp #1", scim.WithDoer(doer))
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+
+	if _, err := client.GetUser(context.Background(), "user-id"); err != nil {
+		t.Fatalf("GetUser() error = %v", err)
+	}
+
+	call := doer.lastCall(t)
+	want := "scim/v2/enterprises/acme%2Fcorp%20%231/Users/user-id"
+	if call.path != want {
+		t.Errorf("path = %q, want %q", call.path, want)
+	}
+}
+
 func TestNewClientValidation(t *testing.T) {
 	doer := &recordingDoer{}
 	transport := roundTripFunc(func(*http.Request) (*http.Response, error) {
@@ -383,6 +484,55 @@ func TestAPIError(t *testing.T) {
 	}
 	if scim.IsStatus(err, http.StatusConflict) {
 		t.Error("IsStatus(error, 409) = true")
+	}
+}
+
+// TestAPIErrorSCIMDetail verifies that a real-world SCIM error body (RFC 7644
+// section 3.12), which carries its human-readable text in "detail" rather
+// than "message", is not lost even though go-gh's HTTPError parser only ever
+// reads "message".
+func TestAPIErrorSCIMDetail(t *testing.T) {
+	const body = `{
+		"schemas": ["urn:ietf:params:scim:api:messages:2.0:Error"],
+		"detail": "User octocat already exists in this enterprise",
+		"scimType": "uniqueness",
+		"status": "409"
+	}`
+	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		resp := jsonResponse(req, http.StatusConflict, body)
+		resp.Header.Set("Content-Type", "application/scim+json")
+		return resp, nil
+	})
+	client, err := scim.NewClient(
+		"acme",
+		scim.WithHost("github.com"),
+		scim.WithToken("secret-token"),
+		scim.WithTransport(transport),
+	)
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+
+	_, err = client.CreateUser(context.Background(), scim.User{UserName: "octocat"})
+	if err == nil {
+		t.Fatal("CreateUser() error = nil")
+	}
+
+	var apiErr *scim.APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("error %T does not contain *scim.APIError: %v", err, err)
+	}
+	if apiErr.StatusCode != http.StatusConflict {
+		t.Errorf("StatusCode = %d", apiErr.StatusCode)
+	}
+	if want := "User octocat already exists in this enterprise"; apiErr.Message != want {
+		t.Errorf("Message = %q, want %q", apiErr.Message, want)
+	}
+	if apiErr.SCIMType != "uniqueness" {
+		t.Errorf("SCIMType = %q, want %q", apiErr.SCIMType, "uniqueness")
+	}
+	if !strings.Contains(err.Error(), "User octocat already exists in this enterprise") {
+		t.Errorf("Error() = %q, want it to contain the SCIM detail message", err.Error())
 	}
 }
 
