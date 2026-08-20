@@ -156,7 +156,7 @@ go test -tags=e2e -count=1 -v ./test/e2e
 Set `SCIM_HOSTNAME` when testing a GHE.com Enterprise.
 
 The live suite creates, updates, suspends, reactivates, and irreversibly deletes
-a user. For groups, it creates, updates, changes membership, and deletes the
+a user. For groups, it creates, updates, modifies membership, and deletes the
 group.
 
 The `test` GitHub Actions workflow runs these tests regularly across the following environments:
