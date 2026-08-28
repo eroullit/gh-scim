@@ -83,4 +83,4 @@ jobs:
             echo "SCIM_HOSTNAME must be configured for the ghecom environment." >&2
             exit 1
           fi
-          /bin/sh ./test/e2e/provisioning.sh
+          sh ./test/e2e/provisioning.sh
