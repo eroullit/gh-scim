@@ -6,7 +6,7 @@ readonly ownership_prefix="gh-scim-e2e-"
 readonly user_external_id="${ownership_prefix}user"
 readonly group_external_id="${ownership_prefix}group"
 
-for command in gh jq git; do
+for command in gh jq git sed tr cut date; do
   if ! command -v "$command" >/dev/null 2>&1; then
     echo "Required command not found: $command" >&2
     exit 1
@@ -26,7 +26,8 @@ if [ -z "${SCIM_TEST_EMAIL_DOMAIN:-}" ]; then
   exit 1
 fi
 
-email_domain="${SCIM_TEST_EMAIL_DOMAIN#@}"
+email_domain="$(printf '%s' "$SCIM_TEST_EMAIL_DOMAIN" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+email_domain="${email_domain#@}"
 case "$email_domain" in
   ""|*"@"*)
     echo "SCIM_TEST_EMAIL_DOMAIN must be a domain without @, got: $email_domain" >&2
@@ -34,7 +35,7 @@ case "$email_domain" in
     ;;
 esac
 
-run_seed="${GITHUB_RUN_ID:-$(date +%s)}-${GITHUB_RUN_ATTEMPT:-1}-$$"
+run_seed="${GITHUB_RUN_ID:-$(date +%Y%m%d%H%M%S)}-${GITHUB_RUN_ATTEMPT:-1}-$$"
 run_suffix="$(printf '%s' "$run_seed" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9-' '-' | sed 's/^-//; s/-$//')"
 if [ -z "$run_suffix" ]; then
   echo "Could not derive a safe test run suffix" >&2
