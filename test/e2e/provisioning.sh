@@ -83,8 +83,8 @@ assert_json() {
 }
 
 cleanup() {
-  status=$?
-  trap - 0
+  status="$1"
+  trap - 0 HUP INT TERM
   set +e
   if [ -n "$group_id" ]; then
     run_scim groups delete "$group_id" --confirm
@@ -94,7 +94,15 @@ cleanup() {
   fi
   exit "$status"
 }
-trap cleanup 0
+
+cleanup_on_exit() {
+  cleanup "$?"
+}
+
+trap cleanup_on_exit 0
+trap 'cleanup 129' HUP
+trap 'cleanup 130' INT
+trap 'cleanup 143' TERM
 
 stale_groups="$(run_scim groups list --filter "externalId eq \"$group_external_id\"")"
 stale_group_ids="$(
