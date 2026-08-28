@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "**/*.go"
+      - "**/*.sh"
       - go.mod
       - go.sum
       - .github/workflows/test.yml
@@ -57,6 +58,12 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - name: Build and install extension
+        run: |
+          go build -o gh-scim .
+          mkdir -p "$RUNNER_TEMP/gh-scim-extension"
+          ln -s "$GITHUB_WORKSPACE" "$RUNNER_TEMP/gh-scim-extension/gh-scim"
+          gh extension install "$RUNNER_TEMP/gh-scim-extension/gh-scim" --force
       - name: Run live provisioning lifecycle
         env:
           SCIM_TOKEN: ${{ secrets.SCIM_TOKEN }}
@@ -73,4 +80,4 @@ jobs:
             echo "SCIM_HOSTNAME must be configured for the ghecom environment." >&2
             exit 1
           fi
-          go test -tags=e2e -count=1 -v ./test/e2e
+          /bin/sh ./test/e2e/provisioning.sh

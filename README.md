@@ -131,27 +131,20 @@ go test ./...
 ```
 
 The live end-to-end suite exercises user and group provisioning against
-GitHub.com or GHE.com:
+GitHub.com or GHE.com by invoking the installed extension through `gh scim`:
 
 ```sh
+go build -o gh-scim .
+gh extension install . --force
 SCIM_TOKEN=... \
 SCIM_ENTERPRISE=your-enterprise \
 SCIM_TEST_EMAIL_DOMAIN=example.onmicrosoft.com \
-go test -tags=e2e -count=1 -v ./test/e2e
+/bin/sh ./test/e2e/provisioning.sh
 ```
 
-The live suite enables verbose API tracing for each `gh-scim` invocation. With
-`-v`, the test output includes the HTTP method, URL and query parameters,
-sanitized headers, and JSON request body.
-
-```sh
-go build -o ./gh-scim .
-SCIM_BINARY="$PWD/gh-scim" \
-SCIM_TOKEN="$(gh auth token)" \
-SCIM_ENTERPRISE="your-enterprise-slug" \
-SCIM_TEST_EMAIL_DOMAIN="example.onmicrosoft.com" \
-go test -tags=e2e -count=1 -v ./test/e2e
-```
+The live suite enables verbose API tracing for each `gh scim` invocation. Its
+output includes the HTTP method, URL and query parameters, sanitized headers,
+and JSON request body.
 
 Set `SCIM_HOSTNAME` when testing a GHE.com Enterprise.
 
