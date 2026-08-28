@@ -13,6 +13,11 @@ for command in gh jq git sed tr cut date; do
   fi
 done
 
+if ! gh scim --help >/dev/null 2>&1; then
+  echo "The gh scim extension is not installed; run: gh extension install eroullit/gh-scim" >&2
+  exit 1
+fi
+
 if [ -z "${SCIM_TOKEN:-}" ]; then
   echo "SCIM_TOKEN is required" >&2
   exit 1
