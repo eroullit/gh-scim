@@ -139,7 +139,7 @@ gh extension install . --force
 SCIM_TOKEN=... \
 SCIM_ENTERPRISE=your-enterprise \
 SCIM_TEST_EMAIL_DOMAIN=example.onmicrosoft.com \
-/bin/sh ./test/e2e/provisioning.sh
+sh ./test/e2e/provisioning.sh
 ```
 
 The live suite enables verbose API tracing for each `gh scim` invocation. Its
