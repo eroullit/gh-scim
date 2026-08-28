@@ -61,9 +61,7 @@ jobs:
       - name: Build and install extension
         run: |
           go build -o gh-scim .
-          mkdir -p "$RUNNER_TEMP/gh-scim-extension"
-          ln -s "$GITHUB_WORKSPACE" "$RUNNER_TEMP/gh-scim-extension/gh-scim"
-          gh extension install "$RUNNER_TEMP/gh-scim-extension/gh-scim" --force
+          gh extension install . --force
       - name: Run live provisioning lifecycle
         env:
           SCIM_TOKEN: ${{ secrets.SCIM_TOKEN }}
