@@ -443,6 +443,9 @@ func TestDefaultDoerRoutesSupportedHosts(t *testing.T) {
 			if got := gotRequest.Header.Get("Accept"); got != "application/vnd.github+json" {
 				t.Errorf("Accept = %q", got)
 			}
+			if got := gotRequest.Header.Get("User-Agent"); got != "eroullit/gh-scim" {
+				t.Errorf("User-Agent = %q", got)
+			}
 		})
 	}
 }

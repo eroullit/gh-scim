@@ -27,6 +27,7 @@ const (
 	GroupSchema = "urn:ietf:params:scim:schemas:core:2.0:Group"
 	// PatchOpSchema is the SCIM schema URN used for PATCH operations.
 	PatchOpSchema = "urn:ietf:params:scim:api:messages:2.0:PatchOp"
+	userAgent     = "eroullit/gh-scim"
 )
 
 // Doer executes a REST request. Callers can implement Doer to provide custom
@@ -171,7 +172,8 @@ func NewClient(enterprise string, options ...Option) (*Client, error) {
 		AuthToken: opts.token,
 		Host:      host,
 		Headers: map[string]string{
-			"Accept": "application/vnd.github+json",
+			"Accept":     "application/vnd.github+json",
+			"User-Agent": userAgent,
 		},
 		Timeout:   opts.timeout,
 		Transport: opts.transport,
